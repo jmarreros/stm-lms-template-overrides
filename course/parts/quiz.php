@@ -2,11 +2,11 @@
 	exit;
 } //Exit if accessed directly
 
-
-// $content = get_content_section($post_id, $item_id );
-// error_log(print_r($content,true));
-
 // Modificado
+// ==========
+$count_retake = 0;
+$firts_lesson_unit = [];
+
 if (isset($_GET['retake'])){
 
 	$user_id = get_current_user_id();
@@ -15,34 +15,37 @@ if (isset($_GET['retake'])){
 
 	$meka_key = 'stm_custom_retake_'.$course_id.'_'.$quizz_id;
 
-	$count = intval(get_user_meta($user_id, $meka_key, true));
+	$count_retake = intval(get_user_meta($user_id, $meka_key, true));
 
-	if ( $count <= 2 ) {
+	if ( $count_retake < 2 ) {
 		delete_quizz($user_id, $course_id, $quizz_id);
-		$count++;
+		$count_retake++;
 	} else{
-		$content = get_content_section($course_id, $quizz_id);
+		$ids_content = get_content_section($course_id, $quizz_id);
 
-		foreach($content as $id){
-
+		foreach($ids_content as $id){
 			switch ( get_post_type($id) ) {
 				case 'stm-quizzes':
 					delete_quizz($user_id, $course_id, $id);
 					break;
 				case 'stm-lessons':
-					# code...
+					delete_lesson($user_id, $course_id, $id);
 					break;
 			}
-
 		}
 
-		$count = 0;
+		$firts_lesson_unit = $ids_content[count($ids_content)-1];
+		$count_retake = 0;
 	}
 
+	error_log(print_r($count_retake,true));
 
-	update_user_meta($user_id, $meka_key, $count);
+	update_user_meta($user_id, $meka_key, $count_retake);
 }
 
+function update_course($user_id, $course_id, $current_lesson){
+
+}
 
 function delete_quizz($user_id, $course_id, $quizz_id){
 	global $wpdb;
@@ -58,9 +61,12 @@ function delete_quizz($user_id, $course_id, $quizz_id){
 }
 
 function delete_lesson($user_id, $course_id, $lesson_id){
-	// DELETE FROM wp_stm_lms_user_lessons WHERE course_id = 50;
+	global $wpdb;
+	// Remove Lesson
+	$sql = "DELETE FROM {$wpdb->prefix}stm_lms_user_lessons
+			WHERE user_id = {$user_id} AND course_id = {$course_id} AND lesson_id = {$lesson_id}";
 
-	// El último elemento es la primera lección en donde hay que actualizar el progreso
+	$wpdb->query($sql);
 }
 
 // Get lessons and quizzes for a section (unit)
@@ -84,7 +90,7 @@ function get_content_section( $course_id, $quizz_id ){
 	return $content;
 }
 
-
+// ==========
 
 ?>
 
@@ -168,9 +174,11 @@ if ( ! empty( $item_id ) ):
 					);
 				} ?>
 
-				<?php STM_LMS_Templates::show_lms_template(
+				<?php
+					// Modificado
+					STM_LMS_Templates::show_lms_template(
 					'quiz/results',
-					compact( 'quiz_meta', 'last_quiz', 'progress', 'passing_grade', 'passed', 'item_id' )
+					compact( 'quiz_meta', 'last_quiz', 'progress', 'passing_grade', 'passed', 'item_id', 'count_retake', 'firts_lesson_unit' )
 				);
 				?>
 
