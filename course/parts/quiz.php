@@ -5,22 +5,24 @@
 // Modificado
 // ==========
 $count_retake = 0;
-$firts_lesson_unit = [];
+$retake_unit = false;
+$firts_lesson_unit = 0;
+
+$user_id = get_current_user_id();
+$course_id = $post_id;
+$quizz_id = $item_id;
+
+$meka_key = 'stm_custom_retake_'.$course_id.'_'.$quizz_id;
+$count_retake = intval(get_user_meta($user_id, $meka_key, true));
 
 if (isset($_GET['retake'])){
 
-	$user_id = get_current_user_id();
-	$course_id = $post_id;
-	$quizz_id = $item_id;
-
-	$meka_key = 'stm_custom_retake_'.$course_id.'_'.$quizz_id;
-
-	$count_retake = intval(get_user_meta($user_id, $meka_key, true));
+	// Always delete current quiz
+	delete_quizz($user_id, $course_id, $quizz_id);
 
 	if ( $count_retake < 2 ) {
-		delete_quizz($user_id, $course_id, $quizz_id);
 		$count_retake++;
-	} else{
+	} else {
 		$ids_content = get_content_section($course_id, $quizz_id);
 
 		foreach($ids_content as $id){
@@ -35,15 +37,23 @@ if (isset($_GET['retake'])){
 		}
 
 		$firts_lesson_unit = $ids_content[count($ids_content)-1];
+
 		$count_retake = 0;
+
+		update_course($user_id, $course_id, $firts_lesson_unit);
 	}
 
-	error_log(print_r($count_retake,true));
+	$retake_unit = (intval($_GET['retake']) === 3);
 
 	update_user_meta($user_id, $meka_key, $count_retake);
 }
 
-function update_course($user_id, $course_id, $current_lesson){
+function update_course($user_id, $course_id, $firts_lesson_unit){
+	global $wpdb;
+	$sql = "UPDATE {$wpdb->prefix}stm_lms_user_courses
+			SET current_lesson_id = {$firts_lesson_unit}
+			WHERE user_id = {$user_id} AND course_id = {$course_id}";
+	$wpdb->query($sql);
 
 }
 
@@ -153,36 +163,45 @@ if ( ! empty( $item_id ) ):
 
 		?>
 		<div class="stm-lms-course__lesson-content <?php echo esc_attr( implode( ' ', $classes ) ); ?>">
-			<?php while ( $q->have_posts() ): $q->the_post();
-				$meta_quiz = STM_LMS_Helpers::parse_meta_field( get_the_ID() ); ?>
+			<?php if ( ! $retake_unit ) : ?>
+				<?php while ( $q->have_posts() ): $q->the_post();
+					$meta_quiz = STM_LMS_Helpers::parse_meta_field( get_the_ID() ); ?>
 
 
-				<div class="stm-lms-course__lesson-html_content">
+					<div class="stm-lms-course__lesson-html_content">
+						<?php
+						ob_start();
+						the_content();
+						$content = ob_get_clean();
+						$content = str_replace( '../../', site_url() . '/', $content );
+						echo stm_lms_filtered_output( $content );
+						?>
+					</div>
+
+					<?php if ( ! empty( $meta_quiz['questions'] ) ) {
+						STM_LMS_Templates::show_lms_template(
+							'quiz/quiz',
+							array_merge( $meta_quiz, compact( 'post_id', 'item_id', 'last_quiz', 'source' ) )
+						);
+					} ?>
+
 					<?php
-					ob_start();
-					the_content();
-					$content = ob_get_clean();
-					$content = str_replace( '../../', site_url() . '/', $content );
-					echo stm_lms_filtered_output( $content );
-					?>
-				</div>
-
-				<?php if ( ! empty( $meta_quiz['questions'] ) ) {
-					STM_LMS_Templates::show_lms_template(
-						'quiz/quiz',
-						array_merge( $meta_quiz, compact( 'post_id', 'item_id', 'last_quiz', 'source' ) )
+						// Modificado
+						STM_LMS_Templates::show_lms_template(
+						'quiz/results',
+						compact( 'quiz_meta', 'last_quiz', 'progress', 'passing_grade', 'passed', 'item_id', 'count_retake' )
 					);
-				} ?>
+					?>
 
+				<?php endwhile; ?>
+			<?php else: ?>
 				<?php
-					// Modificado
-					STM_LMS_Templates::show_lms_template(
-					'quiz/results',
-					compact( 'quiz_meta', 'last_quiz', 'progress', 'passing_grade', 'passed', 'item_id', 'count_retake', 'firts_lesson_unit' )
-				);
+					global $wp;
+					$current_url = home_url( $wp->request );
+					$new_url = str_replace($item_id, '', $current_url);
 				?>
-
-			<?php endwhile; ?>
+				<a href="<?= $new_url ?>" class="btn btn-default">Retomar Unidad</a>
+			<?php endif; ?>
 		</div>
 
 	<?php endif; ?>
