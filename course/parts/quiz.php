@@ -4,9 +4,8 @@
 
 // Modificado
 // ==========
-$count_retake = 0;
-$retake_unit = false;
-$firts_lesson_unit = 0;
+
+include_once( get_stylesheet_directory() . '/stm-lms-templates/dcms_helper.php' );
 
 $user_id = get_current_user_id();
 $course_id = $post_id;
@@ -17,91 +16,16 @@ $count_retake = intval(get_user_meta($user_id, $meka_key, true));
 
 if (isset($_GET['retake'])){
 
-	// Always delete current quiz
+	// Always delete current quiz with a retake
 	delete_quizz($user_id, $course_id, $quizz_id);
 
 	if ( $count_retake < 1 ) {
 		$count_retake++;
-	} else {
-		$ids_content = get_content_section($course_id, $quizz_id);
-
-		foreach($ids_content as $id){
-			switch ( get_post_type($id) ) {
-				case 'stm-quizzes':
-					delete_quizz($user_id, $course_id, $id);
-					break;
-				case 'stm-lessons':
-					delete_lesson($user_id, $course_id, $id);
-					break;
-			}
-		}
-
-		$firts_lesson_unit = $ids_content[count($ids_content)-1];
-
-		$count_retake = 0;
-
-		update_course_user($user_id, $course_id, $firts_lesson_unit);
 	}
-
-	$retake_unit = (intval($_GET['retake']) === 2);
 
 	update_user_meta($user_id, $meka_key, $count_retake);
 }
 
-function update_course_user($user_id, $course_id, $firts_lesson_unit){
-	global $wpdb;
-	$sql = "UPDATE {$wpdb->prefix}stm_lms_user_courses
-			SET current_lesson_id = {$firts_lesson_unit}
-			WHERE user_id = {$user_id} AND course_id = {$course_id}";
-	$wpdb->query($sql);
-
-	$sql = "DELETE FROM {$wpdb->prefix}usermeta
-			WHERE user_id = {$user_id} AND meta_key like 'stm_lms_course_started_{$course_id}%'";
-	$wpdb->query($sql);
-}
-
-function delete_quizz($user_id, $course_id, $quizz_id){
-	global $wpdb;
-	// Remove answers
-	$sql = "DELETE FROM {$wpdb->prefix}stm_lms_user_answers
-			WHERE user_id = {$user_id} AND course_id = {$course_id} AND quiz_id = {$quizz_id}";
-	$wpdb->query($sql);
-
-	// Remove Quizz
-	$sql = "DELETE FROM {$wpdb->prefix}stm_lms_user_quizzes
-			WHERE user_id = {$user_id} AND course_id = {$course_id} AND quiz_id = {$quizz_id}";
-	$wpdb->query($sql);
-}
-
-function delete_lesson($user_id, $course_id, $lesson_id){
-	global $wpdb;
-	// Remove Lesson
-	$sql = "DELETE FROM {$wpdb->prefix}stm_lms_user_lessons
-			WHERE user_id = {$user_id} AND course_id = {$course_id} AND lesson_id = {$lesson_id}";
-
-	$wpdb->query($sql);
-}
-
-// Get lessons and quizzes for a section (unit)
-function get_content_section( $course_id, $quizz_id ){
-
-	$curriculum = get_post_meta($course_id, 'curriculum', true);
-	$curriculum = explode(',' , $curriculum);
-	$key = array_search($quizz_id, $curriculum);
-
-	$content = [];
-	for ($i = $key + 1 ; $i < count($curriculum) ; $i++) {
-		if ( ! is_numeric( $curriculum[$i] ) ) break;
-		$content[] = $curriculum[$i];
-	}
-
-	for ($i = $key - 1 ; $i > 0 ; $i--) {
-		if ( ! is_numeric( $curriculum[$i] ) ) break;
-		$content[] = $curriculum[$i];
-	}
-
-	return $content;
-}
 
 // ==========
 
@@ -166,7 +90,6 @@ if ( ! empty( $item_id ) ):
 
 		?>
 		<div class="stm-lms-course__lesson-content <?php echo esc_attr( implode( ' ', $classes ) ); ?>">
-			<?php if ( ! $retake_unit ) : ?>
 				<?php while ( $q->have_posts() ): $q->the_post();
 					$meta_quiz = STM_LMS_Helpers::parse_meta_field( get_the_ID() ); ?>
 
@@ -192,19 +115,11 @@ if ( ! empty( $item_id ) ):
 						// Modificado
 						STM_LMS_Templates::show_lms_template(
 						'quiz/results',
-						compact( 'quiz_meta', 'last_quiz', 'progress', 'passing_grade', 'passed', 'item_id', 'count_retake' )
+						compact( 'quiz_meta', 'last_quiz', 'progress', 'passing_grade', 'passed', 'item_id', 'count_retake', 'course_id', 'quizz_id' )
 					);
 					?>
 
 				<?php endwhile; ?>
-			<?php else: ?>
-				<?php
-					global $wp;
-					$current_url = home_url( $wp->request );
-					$new_url = str_replace($item_id, $firts_lesson_unit, $current_url);
-				?>
-				<a href="<?= $new_url ?>" class="btn btn-default">Retomar Unidad</a>
-			<?php endif; ?>
 		</div>
 
 	<?php endif; ?>

@@ -8,7 +8,8 @@
  * @var $item_id
  *
  * @var $count_retake
- *
+ * @var $course_id
+ * @var $quizz_id
  */
 
 // Modificado
@@ -38,7 +39,7 @@ $current_url = home_url( $wp->request );
             <?php endif; ?>
 
             <?php if ( $count_retake >= 1 ): ?>
-                <a href="<?= $current_url ?>?retake=2" class="btn btn-default btn-retake">
+                <a href="#" class="btn btn-default btn-retake btn-retake-unit">
                     Tienes que retornar al inicio de la unidad
                 </a>
             <?php endif; ?>
@@ -69,6 +70,26 @@ $current_url = home_url( $wp->request );
             $('.btn-retake').hide();
         }
     });
+
+
+    $('.btn-retake-unit').click(function(e){
+        e.preventDefault();
+
+		$.ajax({
+			url : stm_lms_ajaxurl,
+			type: 'post',
+			data: {
+				action : 'dcms_reset_unit',
+                course_id: <?= $course_id ?>,
+                quizz_id: <?= $quizz_id ?>,
+                current_url: "<?= $current_url ?>"
+			},
+			success: function(url_redirect){
+                window.location.replace(url_redirect);
+			}
+		});
+    });
+
 
 })( jQuery );
 
