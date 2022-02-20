@@ -20,7 +20,7 @@ if (isset($_GET['retake'])){
 	// Always delete current quiz
 	delete_quizz($user_id, $course_id, $quizz_id);
 
-	if ( $count_retake < 2 ) {
+	if ( $count_retake < 1 ) {
 		$count_retake++;
 	} else {
 		$ids_content = get_content_section($course_id, $quizz_id);
@@ -40,21 +40,24 @@ if (isset($_GET['retake'])){
 
 		$count_retake = 0;
 
-		update_course($user_id, $course_id, $firts_lesson_unit);
+		update_course_user($user_id, $course_id, $firts_lesson_unit);
 	}
 
-	$retake_unit = (intval($_GET['retake']) === 3);
+	$retake_unit = (intval($_GET['retake']) === 2);
 
 	update_user_meta($user_id, $meka_key, $count_retake);
 }
 
-function update_course($user_id, $course_id, $firts_lesson_unit){
+function update_course_user($user_id, $course_id, $firts_lesson_unit){
 	global $wpdb;
 	$sql = "UPDATE {$wpdb->prefix}stm_lms_user_courses
 			SET current_lesson_id = {$firts_lesson_unit}
 			WHERE user_id = {$user_id} AND course_id = {$course_id}";
 	$wpdb->query($sql);
 
+	$sql = "DELETE FROM {$wpdb->prefix}usermeta
+			WHERE user_id = {$user_id} AND meta_key like 'stm_lms_course_started_{$course_id}%'";
+	$wpdb->query($sql);
 }
 
 function delete_quizz($user_id, $course_id, $quizz_id){
@@ -198,7 +201,7 @@ if ( ! empty( $item_id ) ):
 				<?php
 					global $wp;
 					$current_url = home_url( $wp->request );
-					$new_url = str_replace($item_id, '', $current_url);
+					$new_url = str_replace($item_id, $firts_lesson_unit, $current_url);
 				?>
 				<a href="<?= $new_url ?>" class="btn btn-default">Retomar Unidad</a>
 			<?php endif; ?>

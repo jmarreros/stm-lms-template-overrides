@@ -15,9 +15,6 @@
 global $wp;
 $current_url = home_url( $wp->request );
 
-error_log(print_r("Passing:",true));
-error_log(print_r($passed,true));
-error_log(print_r($passing_grade,true));
 ?>
 
 <div class="stm-lms-quiz__result__overlay"></div>
@@ -26,8 +23,8 @@ error_log(print_r($passing_grade,true));
     <h4 class="stm-lms-quiz__result_number">
         <span><?php echo round($progress, 1); ?>%</span>
     </h4>
-    <?php if ( $count_retake > 0 && $count_retake <= 2): ?>
-        <h5>Veces: <?= $count_retake ?>/2</h5>
+    <?php if ( $count_retake >= 0 && $count_retake < 2): ?>
+        <h5>Veces: <?= $count_retake + 1 ?>/2</h5>
     <?php endif; ?>
 
     <div class="stm-lms-quiz__result_actions">
@@ -40,16 +37,9 @@ error_log(print_r($passing_grade,true));
                 </a>
             <?php endif; ?>
 
-            <?php if ( $count_retake == 1 ): ?>
-                <div class="another-chance"><span>Si no apruebas tendrás que hacer la unidad nuevamente<span></div>
+            <?php if ( $count_retake >= 1 ): ?>
                 <a href="<?= $current_url ?>?retake=2" class="btn btn-default btn-retake">
-                    <?php esc_html_e('Re-take Quiz', 'masterstudy-lms-learning-management-system'); ?>
-                </a>
-            <?php endif; ?>
-
-            <?php if ( $count_retake >= 2 ): ?>
-                <a href="<?= $current_url ?>?retake=3" class="btn btn-default btn-retake">
-                    Tienes que retomar la unidad
+                    Tienes que retornar al inicio de la unidad
                 </a>
             <?php endif; ?>
 
